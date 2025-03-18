@@ -24,7 +24,7 @@
 \usepackage{xcolor}
 \usepackage{tikz}
 % \usepackage{algorithm}
-\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\usepackage[ruled,vlined]{algorithm2e}
 \renewcommand{\qedsymbol}{$\blacksquare$}
 
 \usepackage{colortbl}
@@ -152,13 +152,19 @@
 		$X$ est une superclé ssi
 		$$ X^+ = R $$
 
-    \vspace{-8pt}
+		\vspace{-8pt}
 
 		\textbf{Clé:}\\
 		$X$ est une clé ssi
-    \vspace{-6pt}
+		\vspace{-6pt}
 		$$ X^+ = R \text{ et } \nexists Y \subset X \text{ tel que } Y^+ = R $$
 	}
+	\tb{DF triviale}{
+		Une dépendance fonctionnelle est triviale si elle est de la formes suivante:
+		$$ X \rightarrow Y \text{ où } Y \subseteq X $$
+	}
+
+
 	\tb{Dépendance fonctionnelle élémentaire}{
 		Soit $X$ un ensemble d'attributs et $A$ un attribut, alors $X \rightarrow A$ est élémentaire ssi
 		\begin{enumerate}
@@ -166,16 +172,30 @@
 			\item $\nexists X' \subset X \text{ tel que } X' \rightarrow Y$,
 			      c-à-d, que on ne peut pas trouver un sous-ensemble de $X$ qui détermine $Y$.
 		\end{enumerate}
-    Note: La partie de droite ne peut pas être un groupe d'attributs.
+		Note: La partie de droite ne peut pas être un groupe d'attributs.
 	}
 	\tb{Couverure minimale}{
 		Soit $\mathscr{F}$ un ensemble de dépendances fonctionnelles, alors
 		$\mathscr{F}$ est minimale ssi on ne peut pas enlever une dépendance
 		fonctionnelle sans perdre de l'information.\\
 	}
+	\tb{Calculer la couverture minimale}{
+		\begin{enumerate}
+			\item Décomposer chaque DF de type $X \rightarrow Y,Z$ en $X \rightarrow Y$ et $X \rightarrow Z$.
+			\item Enlever les DF non-élémentaires.
+			\item Enlever les DF redondantes. (Les DF qui peuvent être déduites des autres DF)
+		\end{enumerate}
+	}
 	\tb{Forme normale de Boyce-Codd (BCNF)}{
-		Une relation $R$ est en BCNF ssi pour chaque DF non triviale $X \rightarrow
-			A$, on a que:
+		\textbf{Définition 1 :}\\
+		Un schéma relationnel $R(U)$ avec ensemble \mathscr{F} de DF est en forme
+		BCNF ssi pour chaque dépendance élémentaire $X \rightarrow A$ dans
+		$\mathscr{F}^+$, on a que
+		$$ X \text{ est une clé (candidate)} $$
+		\textbf{Définition 2 :}\\
+		Un schéma relationnel $R(U)$ avec ensemble $\mathscr{F}$ de DF est en forme
+		BCNF ssi pour chaque DF non triviale $X \rightarrow A$ de $\mathscr{F}$,
+		on a que:
 		$$ X \text{ est une superclé de } R $$
 	}
 	\tb{1FN,2FN,3FN}{
@@ -200,126 +220,66 @@
 			      non-clé.
 		\end{enumerate}
 	}
+	\tb{Algo-BCNF}{
+	\textbf{Entrée:} \\ Un schéma $R(U, \mathscr{F})$ où $U$ est l'ensemble des attributs et $\mathscr{F}$ est l'ensemble des dépendances fonctionnelles.\\
+	\textbf{Sortie:}\\ Une décomposition
+	{\scriptsize
+	$D = \{R_1(U_1, \mathscr{F}_1), \ldots, R_n(U_n, \mathscr{F}_n)\}$
+	}
+	sans perte d'information avec $R_i(U_i, \mathscr{F}_i)$ en BCNF pour tout $i$ (mais perte possible de dépendances).\\
 
+
+	\begin{enumerate}
+		\item Initialiser $D \gets \{ R(U, \mathscr{F}) \}$
+		\item Tant qu'il existe $R'(U', \mathscr{F}') \in D$ qui n'est pas en BCNF
+		      \begin{enumerate}
+			      \item Trouver une DF non triviale $X \!\! \rightarrow \!\! Y \in \mathscr{F}'$ tq $X \neq X^+$ et $X^+ \neq U'$
+			      \item Poser $U'_1 = X^+$ et $U'_2 = X \cup (U' - X^+)$, $\mathscr{F}'_1$ les dépendances sur $U'_1$ et $\mathscr{F}'_2$ celles sur $U'_2$
+			      \item Poser $U'_1 = X^+$, $U'_2 = X \cup (U' - X^+)$, $\mathscr{F}'_1$ les dépendances sur $U'_1$ et $\mathscr{F}'_2$ celles sur $U'_2$
+			      \item Remplacer $R'(U')$ par ses projections sur $U'_1$ et $U'_2$:
+			            $R'_1(U'_1, \mathscr{F}'_1)$ et $R'_2(U'_2, \mathscr{F}'_2)$
+			            ($R' = R'_1 \bowtie R'_2$ par Heath avec $X$ déterminant, $X^+ - X$ déterminé et $U' - X^+$ résidu)
+		      \end{enumerate}
+	\end{enumerate}
+	Le calcul de $\mathscr{F}'_1$ et $\mathscr{F}'_2$ à partir de $\mathscr{F}'$ doit se faire avec l'algorithme de projection des dépendances
+	}
+	\tb{Projection des dépendances fonctionnelles}{
+		\textbf{Entrée:} Un schéma $R(U, \mathscr{F})$ et $U_1 \subset U$\\
+		\textbf{Sortie:} Les dépendances $\mathscr{F}_1$ induites sur $R_1(U_1) = \pi_{U_1}(R)$\\
+		\begin{enumerate}
+			\item $\mathscr{F}_1 \gets \emptyset$ (initialisation)
+			\item Pour chaque $X \subseteq U_1$
+			      \begin{enumerate}
+				      \item Calculer $X^+$ (par rapport à $\mathscr{F}$)
+				      \item Ajouter à $\mathscr{F}_1$ toutes les $X \rightarrow \{A\}$ t.q. $A
+					            \in (X^+ - X) \cap U_1$ \\ (optionnel : et t.q. on n'a pas déjà $Y \rightarrow \{A\} \in \mathscr{F}_1$ avec $Y \subset X$)
+			      \end{enumerate}
+			\item (optionnel) enlever de $\mathscr{F}_1$ les dépendances redondantes
+			\item retourner $\mathscr{F}_1$
+		\end{enumerate}
+	}
+	\tb{Algo de Bernstein}{
+		\textbf{Entrée:} Un schéma $R$ (arbitraire) et un ensemble $\mathscr{F}$ de DF qui soit en 1NF.\\
+		\textbf{Sortie:} Projections donnant des schémas $R_i$ en 3-NF pour tout $i$ sans perte d'information et préservant les dépendances.\\
+		\begin{enumerate}
+			\item Initialiser $P$ (ensemble de projections) à l'ensemble vide (et $i = 1$)
+			\item Fixer $\mathscr{G}$ une \textbf{couverture minimale} de $\mathscr{F}$
+			\item Pour chaque $X$ distinct d'une partie gauche d'une DF de $\mathscr{G}$
+			      \begin{enumerate}
+				      \item Faire la réunion $Y$ de tous les $\{A\}$ tels que $X
+					            \rightarrow \{A\} \in \mathscr{G}$
+				      \item Ajouter à $P$ la projection de $R$ sur $X,Y$ (donne
+				            $R_i(\underline{X},Y) = \pi_{XY}(R)$, avec clé primaire $X$)
+				      \item $i = i + 1$
+			      \end{enumerate}
+			\item Si aucune des projections dans $P$ ne contient une clé candidate de
+			      $R$, ajouter à $P$ la projection de $R$ sur une clé candidate. ($R_i(K)
+				      = \pi_K(R)$ pour $K$ clé candidate).
+		\end{enumerate}
+		$R$ est alors la jointure naturelle des projections obtenues. La décomposition est sans perte.
+
+	}
 
 
 \end{multicols*}
 \end{document}
-% From Wikipedia, the free encyclopedia
-%
-% Armstrong's axioms are a set of axioms (or, more precisely, inference rules) used to infer all the functional dependencies on a relational database. They were developed by William W. Armstrong in his 1974 paper.[1] The axioms are sound in generating only functional dependencies in the closure of a set of functional dependencies (denoted as \mathscr{F} + {\displaystyle \mathscr{F}^{+}}) when applied to that set (denoted as \mathscr{F} {\displaystyle \mathscr{F}}). They are also complete in that repeated application of these rules will generate all functional dependencies in the closure \mathscr{F} + {\displaystyle \mathscr{F}^{+}}.
-%
-% More formally, let ⟨ R ( U ) , \mathscr{F} ⟩ {\displaystyle \langle R(U),\mathscr{F}\rangle } denote a relational scheme over the set of attributes U {\displaystyle U} with a set of functional dependencies \mathscr{F} {\displaystyle \mathscr{F}}. We say that a functional dependency f {\displaystyle f} is logically implied by \mathscr{F} {\displaystyle \mathscr{F}}, and denote it with \mathscr{F} ⊨ f {\displaystyle \mathscr{F}\models f} if and only if for every instance r {\displaystyle r} of R {\displaystyle R} that satisfies the functional dependencies in \mathscr{F} {\displaystyle \mathscr{F}}, r {\displaystyle r} also satisfies f {\displaystyle f}. We denote by \mathscr{F} + {\displaystyle \mathscr{F}^{+}} the set of all functional dependencies that are logically implied by \mathscr{F} {\displaystyle \mathscr{F}}.
-%
-% Furthermore, with respect to a set of inference rules A {\displaystyle A}, we say that a functional dependency f {\displaystyle f} is derivable from the functional dependencies in \mathscr{F} {\displaystyle \mathscr{F}} by the set of inference rules A {\displaystyle A}, and we denote it by \mathscr{F} ⊢ A f {\displaystyle \mathscr{F}\vdash _{A}f} if and only if f {\displaystyle f} is obtainable by means of repeatedly applying the inference rules in A {\displaystyle A} to functional dependencies in \mathscr{F} {\displaystyle \mathscr{F}}. We denote by \mathscr{F} A ∗ {\displaystyle F_{A}^{*}} the set of all functional dependencies that are derivable from \mathscr{F} {\displaystyle \mathscr{F}} by inference rules in A {\displaystyle A}.
-%
-% Then, a set of inference rules A {\displaystyle A} is sound if and only if the following holds:
-%
-% \mathscr{F} A ∗ ⊆ \mathscr{F} + {\displaystyle F_{A}^{*}\subseteq \mathscr{F}^{+}}
-%
-% that is to say, we cannot derive by means of A {\displaystyle A} functional dependencies that are not logically implied by \mathscr{F} {\displaystyle \mathscr{F}}. The set of inference rules A {\displaystyle A} is said to be complete if the following holds:
-%
-% \mathscr{F} + ⊆ \mathscr{F} A ∗ {\displaystyle \mathscr{F}^{+}\subseteq F_{A}^{*}}
-%
-% more simply put, we are able to derive by A {\displaystyle A} all the functional dependencies that are logically implied by \mathscr{F} {\displaystyle \mathscr{F}}.
-% Axioms (primary rules)
-%
-% Let R ( U ) {\displaystyle R(U)} be a relation scheme over the set of attributes U {\displaystyle U}. Henceforth we will denote by letters X {\displaystyle X}, Y {\displaystyle Y}, Z {\displaystyle Z} any subset of U {\displaystyle U} and, for short, the union of two sets of attributes X {\displaystyle X} and Y {\displaystyle Y} by X Y {\displaystyle XY} instead of the usual X ∪ Y {\displaystyle X\cup Y}; this notation is rather standard in database theory when dealing with sets of attributes.
-% Axiom of reflexivity
-%
-% If X {\displaystyle X} is a set of attributes and Y {\displaystyle Y} is a subset of X {\displaystyle X}, then X {\displaystyle X} holds Y {\displaystyle Y}. Hereby, X {\displaystyle X} holds Y {\displaystyle Y} [ X → Y {\displaystyle X\to Y}] means that X {\displaystyle X} functionally determines Y {\displaystyle Y}.
-%
-% If Y ⊆ X {\displaystyle Y\subseteq X} then X → Y {\displaystyle X\to Y}.
-%
-% Axiom of augmentation
-%
-% If X {\displaystyle X} holds Y {\displaystyle Y} and Z {\displaystyle Z} is a set of attributes, then X Z {\displaystyle XZ} holds Y Z {\displaystyle YZ}. It means that attribute in dependencies does not change the basic dependencies.
-%
-% If X → Y {\displaystyle X\to Y}, then X Z → Y Z {\displaystyle XZ\to YZ} for any Z {\displaystyle Z}.
-%
-% Axiom of transitivity
-%
-% If X {\displaystyle X} holds Y {\displaystyle Y} and Y {\displaystyle Y} holds Z {\displaystyle Z}, then X {\displaystyle X} holds Z {\displaystyle Z}.
-%
-% If X → Y {\displaystyle X\to Y} and Y → Z {\displaystyle Y\to Z}, then X → Z {\displaystyle X\to Z}.
-%
-% Additional rules (Secondary Rules)
-%
-% These rules can be derived from the above axioms.
-% Decomposition
-%
-% If X → Y Z {\displaystyle X\to YZ} then X → Y {\displaystyle X\to Y} and X → Z {\displaystyle X\to Z}.
-% Proof
-% 1. X → Y Z {\displaystyle X\to YZ} 	(Given)
-% 2. Y Z → Y {\displaystyle YZ\to Y} 	(Reflexivity)
-% 3. X → Y {\displaystyle X\to Y} 	(Transitivity of 1 & 2)
-% Composition
-%
-% If X → Y {\displaystyle X\to Y} and A → B {\displaystyle A\to B} then X A → Y B {\displaystyle XA\to YB}.
-% Proof
-% 1. X → Y {\displaystyle X\to Y} 	(Given)
-% 2. A → B {\displaystyle A\to B} 	(Given)
-% 3. X A → Y A {\displaystyle XA\to YA} 	(Augmentation of 1 & A)
-% 4. Y A → Y B {\displaystyle YA\to YB} 	(Augmentation of 2 & Y)
-% 5. X A → Y B {\displaystyle XA\to YB} 	(Transitivity of 3 and 4)
-% Union
-%
-% If X → Y {\displaystyle X\to Y} and X → Z {\displaystyle X\to Z} then X → Y Z {\displaystyle X\to YZ}.
-% Proof
-% 1. X → Y {\displaystyle X\to Y} 	(Given)
-% 2. X → Z {\displaystyle X\to Z} 	(Given)
-% 3. X → X Z {\displaystyle X\to XZ} 	(Augmentation of 2 & X)
-% 4. X Z → Y Z {\displaystyle XZ\to YZ} 	(Augmentation of 1 & Z)
-% 5. X → Y Z {\displaystyle X\to YZ} 	(Transitivity of 3 and 4)
-% Pseudo transitivity
-%
-% If X → Y {\displaystyle X\to Y} and Y Z → W {\displaystyle YZ\to W} then X Z → W {\displaystyle XZ\to W}.
-% Proof
-% 1. X → Y {\displaystyle X\to Y} 	(Given)
-% 2. Y Z → W {\displaystyle YZ\to W} 	(Given)
-% 3. X Z → Y Z {\displaystyle XZ\to YZ} 	(Augmentation of 1 & Z)
-% 4. X Z → W {\displaystyle XZ\to W} 	(Transitivity of 3 and 2)
-% Self determination
-%
-% I → I {\displaystyle I\to I} for any I {\displaystyle I}. This follows directly from the axiom of reflexivity.
-% Extensivity
-%
-% The following property is a special case of augmentation when Z = X {\displaystyle Z=X}.
-%
-% If X → Y {\displaystyle X\to Y}, then X → X Y {\displaystyle X\to XY}.
-%
-% Extensivity can replace augmentation as axiom in the sense that augmentation can be proved from extensivity together with the other axioms.
-% Proof
-% 1. X Z → X {\displaystyle XZ\to X} 	(Reflexivity)
-% 2. X → Y {\displaystyle X\to Y} 	(Given)
-% 3. X Z → Y {\displaystyle XZ\to Y} 	(Transitivity of 1 & 2)
-% 4. X Z → X Y Z {\displaystyle XZ\to XYZ} 	(Extensivity of 3)
-% 5. X Y Z → Y Z {\displaystyle XYZ\to YZ} 	(Reflexivity)
-% 6. X Z → Y Z {\displaystyle XZ\to YZ} 	(Transitivity of 4 & 5)
-% Armstrong relation
-%
-% Given a set of functional dependencies \mathscr{F} {\displaystyle \mathscr{F}}, an Armstrong relation is a relation which satisfies all the functional dependencies in the closure \mathscr{F} + {\displaystyle \mathscr{F}^{+}} and only those dependencies. Unfortunately, the minimum-size Armstrong relation for a given set of dependencies can have a size which is an exponential function of the number of attributes in the dependencies considered.[2]
-% References
-%
-% William Ward Armstrong: Dependency Structures of Data Base Relationships, page 580-583. IFIP Congress, 1974.
-%
-% Beeri, C.; Dowd, M.; Fagin, R.; Statman, R. (1984). "On the Structure of Armstrong Relations for Functional Dependencies" (PDF). Journal of the ACM. 31: 30–46. CiteSeerX 10.1.1.68.9320. doi:10.1145/2422.322414. Archived from the original (PDF) on 2018-07-23.
-%
-% External links
-%
-% UMBC CMSC 461 Spring '99
-% CS345 Lecture Notes from Stanford University
-%
-% vte
-%
-% Database management systems
-%
-% vte
-%
-% Database normalization
-% Categories:
-%
-% Database normalizationData modelingDatabase management systems
-%
-% This page was last edited on 5 December 2024, at 20:33 (UTC).
-% Text is available under the Creative Commons Attribution-ShareAlike 4.0 License; additional terms may apply. By using this site, you agree to the Terms of Use and Privacy Policy. Wikipedia® is a registered trademark of the Wikimedia Foundation, Inc., a non-profit organization.
